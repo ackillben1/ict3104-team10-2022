@@ -10,3 +10,6 @@ desktop.ini
 # IPython
 profile_default/
 ipython_config.py
+
+# IDE
+*/.idea/*
