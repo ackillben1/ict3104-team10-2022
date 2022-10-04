@@ -10,6 +10,8 @@ desktop.ini
 # IPython
 profile_default/
 ipython_config.py
+Training/TSU_3DPose_AGCN_feat/
+Training/RGB_i3d_16frames_64000_SSD/
 
 # User-specific stuff
 .idea/**/workspace.xml
