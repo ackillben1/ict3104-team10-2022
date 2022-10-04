@@ -93,7 +93,7 @@ if args.dataset == 'TSU':
         train_split = './pipline/data/smarthome_CV_51.json'
         test_split = './pipline/data/smarthome_CV_51.json'
 
-    rgb_root = './pipline/RGB_i3d_16frames_64000_SSD'
+    rgb_root = './Training/RGB_i3d_16frames_64000_SSD'
     skeleton_root='./pipline/TSU_3DPose_AGCN_feat/2sAGCN_16frames_64000' 
 
 
