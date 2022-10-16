@@ -125,27 +125,29 @@ def load_data_rgb_skeleton(train_split, val_split, root_skeleton, root_rgb):
     return dataloaders, datasets
 
 
-def load_data(train_split, val_split, root):
+def load_data(val_split, root):
     # Load Data
     print(train_split, val_split, root, batch_size, classes)
   
-    if len(train_split) > 0:
-        dataset = Dataset(train_split, 'training', root, batch_size, classes)
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8,
-                                                 pin_memory=True, collate_fn=collate_fn)
-        dataloader.root = root
-    else:
-
-        dataset = None
-        dataloader = None
+    # if len(train_split) > 0:
+    #     dataset = Dataset(train_split, 'training', root, batch_size, classes)
+    #     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8,
+    #                                              pin_memory=True, collate_fn=collate_fn)
+    #     dataloader.root = root
+    # else:
+    #
+    #     dataset = None
+    #     dataloader = None
 
     val_dataset = Dataset(val_split, 'testing', root, batch_size, classes)
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=2,
                                                  pin_memory=True, collate_fn=collate_fn)
     val_dataloader.root = root
 
-    dataloaders = {'train': dataloader, 'val': val_dataloader}
-    datasets = {'train': dataset, 'val': val_dataset}
+    # dataloaders = {'train': dataloader, 'val': val_dataloader}
+    # datasets = {'train': dataset, 'val': val_dataset}
+    dataloaders = {'val': val_dataloader}
+    datasets = {'val': val_dataset}
     return dataloaders, datasets
 
 
@@ -166,9 +168,9 @@ def run(models, criterion, num_epochs=50):
 
             if best_map < val_map:
                 best_map = val_map
-                torch.save(model.state_dict(),'./Trained_models/'+str(args.model)+'/weight_epoch_'+str(args.lr)+'_'+str(epoch))
-                torch.save(model,'./Trained_models/'+str(args.model)+'/model_epoch_'+str(args.lr)+'_'+str(epoch))
-                print('Trained Model is saved sucessfully at this path: ','./Trained_models/'+str(args.model)+'/weight_epoch_'+str(args.lr)+'_'+str(epoch))
+                torch.save(model.state_dict(),'./Testing/Trained_models/'+str(args.model)+'/weight_epoch_'+str(args.lr)+'_'+str(epoch))
+                torch.save(model,'./Testing/Trained_models/'+str(args.model)+'/model_epoch_'+str(args.lr)+'_'+str(epoch))
+                print('Trained Model is saved sucessfully at this path: ','./Testing/Trained_models/'+str(args.model)+'/weight_epoch_'+str(args.lr)+'_'+str(epoch))
 
 def eval_model(model, dataloader, baseline=False):
     results = {}
@@ -261,13 +263,13 @@ if __name__ == '__main__':
 
     if args.mode == 'flow':
         print('flow mode', flow_root)
-        dataloaders, datasets = load_data(train_split, test_split, flow_root)
+        dataloaders, datasets = load_data(test_split, flow_root)
     elif args.mode == 'skeleton':
         print('Pose mode', skeleton_root)
-        dataloaders, datasets = load_data(train_split, test_split, skeleton_root)
+        dataloaders, datasets = load_data(test_split, skeleton_root)
     elif args.mode == 'rgb':
         print('RGB mode', rgb_root)
-        dataloaders, datasets = load_data(train_split, test_split, rgb_root)
+        dataloaders, datasets = load_data(test_split, rgb_root)
 
     if args.train:
         num_channel = args.num_channel
