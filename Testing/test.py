@@ -92,16 +92,14 @@ if args.dataset == 'TSU':
     classes=51
     
     if split_setting =='CS':
-        train_split = './Training/data/smarthome_CS_51.json'
         test_split = './Training/data/smarthome_CS_51.json'
         # C:\Users\jaspz\Documents\3104 - Software Management\pipline\data\smarthome_CS_51.json
         
     elif split_setting =='CV':
-        train_split = './Training/data/smarthome_CV_51.json'
         test_split = './Training/data/smarthome_CV_51.json'
     
-    rgb_root = './Training/RGB_i3d_16frames_64000_SSD'
-    skeleton_root='./Training/TSU_3DPose_AGCN_feat/2sAGCN_16frames_64000' 
+    rgb_root = './Testing/RGB_i3d_16frames_64000_SSD'
+    skeleton_root='./Testing/TSU_3DPose_AGCN_feat/2sAGCN_16frames_64000'
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
@@ -119,7 +117,7 @@ def load_data_rgb_skeleton(train_split, val_split, root_skeleton, root_rgb):
         dataloader = None
 
     val_dataset = Dataset(val_split, 'testing', root_skeleton, root_rgb, batch_size, classes)
-    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=True, num_workers=0,
+    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
                                                  pin_memory=True, collate_fn=collate_fn) #2
 
     dataloaders = {'train': dataloader, 'val': val_dataloader}
@@ -142,7 +140,7 @@ def load_data(train_split, val_split, root):
         dataloader = None
 
     val_dataset = Dataset(val_split, 'testing', root, batch_size, classes)
-    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=True, num_workers=2,
+    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=2,
                                                  pin_memory=True, collate_fn=collate_fn)
     val_dataloader.root = root
 
