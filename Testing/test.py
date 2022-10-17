@@ -272,7 +272,6 @@ if __name__ == '__main__':
             # weight
             # model.load_state_dict(torch.load(str(args.load_model)))
             print("loaded", args.load_model)
-        torch.load(args.load_model, map_location=torch.device('cpu'))
 
         pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print('pytorch_total_params', pytorch_total_params)
