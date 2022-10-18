@@ -268,6 +268,7 @@ if __name__ == '__main__':
 
         if args.load_model != "False":
             # entire model
+            args.load_model = args.load_model.strip("'")
             model = torch.load(args.load_model)
             # weight
             # model.load_state_dict(torch.load(str(args.load_model)))
