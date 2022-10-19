@@ -1,4 +1,5 @@
 from __future__ import division
+from ast import arg
 import time
 import os
 import argparse
@@ -83,6 +84,7 @@ if str(args.APtype) == "map":
 
 
 batch_size = int(args.batch_size)
+epoch_size = int(args.epoch)
 
 if args.dataset == "TSU":
     split_setting = str(args.split_setting)
@@ -353,6 +355,8 @@ if __name__ == "__main__":
         print(
             "\n\n***No Cuda Core compatible GPUs found on system. Unable to run training sequence.***"
         )
+    elif epoch_size > 140 or epoch_size < 1:
+        print("\n\n***Invalid epoch. Please select a value between 1 and 140.***")
     elif batch_size > torch.cuda.device_count():
         print(
             "\n\n***Invalid Batch Size. Please select a value equal or lower than the number of GPUs your system has.***"
