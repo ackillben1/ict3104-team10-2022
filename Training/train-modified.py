@@ -359,7 +359,7 @@ if __name__ == "__main__":
         print("\n\n***Invalid epoch. Please select a value between 1 and 140.***")
     elif batch_size > torch.cuda.device_count():
         print(
-            "\n\n***Invalid Batch Size. Please select a value equal or lower than the number of GPUs your system has.***"
+            "\n\n***Batch_Size error. Your system might not have the necessary GPU resources to run the training sequence. Please try a lower batch_size value.***"
         )
         print("GPUs on system: ", torch.cuda.device_count())
     else:
