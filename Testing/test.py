@@ -100,8 +100,8 @@ if args.dataset == 'TSU':
 
     # rgb_root = 'C:/Users/angyi\Documents/SIT Year 3/3104/Project/TSU_RGB_i3d_feat/RGB_i3d_16frames_64000_SSD'
     # skeleton_root='C:/Users/angyi/Documents/SIT Year 3/3104/Project/TSU_3DPose_AGCN_feat/2sAGCN_16frames_64000'
-    rgb_root = './Training/RGB_i3d_16frames_64000_SSD'
-    skeleton_root = './Training/TSU_3DPose_AGCN_feat/2sAGCN_16frames_64000'
+    rgb_root = './Testing/RGB_i3d_16frames_64000_SSD'
+    skeleton_root = './Testing/TSU_3DPose_AGCN_feat/2sAGCN_16frames_64000'
 
 
 def sigmoid(x):
