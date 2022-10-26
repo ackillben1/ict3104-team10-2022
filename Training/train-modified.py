@@ -350,6 +350,7 @@ if __name__ == "__main__":
     print("batch_size:", batch_size)
     print("cuda_avail", torch.cuda.is_available())
     print("cuda_device:", torch.cuda.device_count())
+    print("train:", args.train)
 
     if torch.cuda.is_available() == False:
         print(
