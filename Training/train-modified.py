@@ -346,11 +346,18 @@ def val_step(model, gpu, dataloader, epoch):
 
 
 if __name__ == "__main__":
-    print(str(args.model))
+    print("mode:", args.mode)
+    print("split_setting:", args.split_setting)
+    print("model", str(args.model))
+    print("Train", str(args.train))
+    print("num_channel", str(args.num_channel))
+    print("lr", str(args.lr))
+    print("kernelsize", str(args.kernelsize))
+    print("APtype", str(args.APtype))
+    print("epoch", str(args.epoch))
     print("batch_size:", batch_size)
     print("cuda_avail", torch.cuda.is_available())
     print("cuda_device:", torch.cuda.device_count())
-    print("train:", args.train)
 
     if torch.cuda.is_available() == False:
         print(
