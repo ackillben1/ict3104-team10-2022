@@ -202,6 +202,7 @@ def run(models, criterion, num_epochs=50):
             sched.step(val_loss)
 
             if best_map < val_map:
+                timestr = time.strftime("%d%m%y-%H%M")
                 best_map = val_map
                 torch.save(
                     model.state_dict(),
@@ -210,7 +211,8 @@ def run(models, criterion, num_epochs=50):
                     + "/weight_epoch_"
                     + str(args.lr)
                     + "_"
-                    + str(epoch),
+                    + str(epoch)
+                    + timestr,
                 )
                 torch.save(
                     model,
@@ -219,7 +221,8 @@ def run(models, criterion, num_epochs=50):
                     + "/model_epoch_"
                     + str(args.lr)
                     + "_"
-                    + str(epoch),
+                    + str(epoch)
+                    + timestr,
                 )
                 print(
                     "Trained Model is saved sucessfully at this path: ",
@@ -228,7 +231,8 @@ def run(models, criterion, num_epochs=50):
                     + "/weight_epoch_"
                     + str(args.lr)
                     + "_"
-                    + str(epoch),
+                    + str(epoch)
+                    + timestr,
                 )
 
 
@@ -346,7 +350,15 @@ def val_step(model, gpu, dataloader, epoch):
 
 
 if __name__ == "__main__":
-    print(str(args.model))
+    print("mode:", args.mode)
+    print("split_setting:", args.split_setting)
+    print("model", str(args.model))
+    print("Train", str(args.train))
+    print("num_channel", str(args.num_channel))
+    print("lr", str(args.lr))
+    print("kernelsize", str(args.kernelsize))
+    print("APtype", str(args.APtype))
+    print("epoch", str(args.epoch))
     print("batch_size:", batch_size)
     print("cuda_avail", torch.cuda.is_available())
     print("cuda_device:", torch.cuda.device_count())
