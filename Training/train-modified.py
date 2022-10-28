@@ -202,6 +202,7 @@ def run(models, criterion, num_epochs=50):
             sched.step(val_loss)
 
             if best_map < val_map:
+                timestr = time.strftime("%d%m%y-%H%M")
                 best_map = val_map
                 torch.save(
                     model.state_dict(),
@@ -210,7 +211,8 @@ def run(models, criterion, num_epochs=50):
                     + "/weight_epoch_"
                     + str(args.lr)
                     + "_"
-                    + str(epoch),
+                    + str(epoch)
+                    + timestr,
                 )
                 torch.save(
                     model,
@@ -219,7 +221,8 @@ def run(models, criterion, num_epochs=50):
                     + "/model_epoch_"
                     + str(args.lr)
                     + "_"
-                    + str(epoch),
+                    + str(epoch)
+                    + timestr,
                 )
                 print(
                     "Trained Model is saved sucessfully at this path: ",
@@ -228,7 +231,8 @@ def run(models, criterion, num_epochs=50):
                     + "/weight_epoch_"
                     + str(args.lr)
                     + "_"
-                    + str(epoch),
+                    + str(epoch)
+                    + timestr,
                 )
 
 
