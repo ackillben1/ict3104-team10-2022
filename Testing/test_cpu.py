@@ -229,6 +229,25 @@ def val_step(model, gpu, dataloader, epoch):
     val_map = torch.sum(100 * apm.value()) / torch.nonzero(100 * apm.value()).size()[0]
     print('val-map:', val_map)
     print(100 * apm.value())
+
+    fields = ['val-map', 'apm']
+    rows = []
+    init_flag = False
+    tempApm = apm.value().tolist()
+    for value in tempApm:
+        if not init_flag:
+            rows.append([float(val_map), value])
+            init_flag = True
+        else:
+            rows.append(['', value])
+
+    filename = "./Testing/results/results.csv"
+    with open(filename, 'w', newline='') as csv_file:
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerow(fields)
+        csv_writer.writerows(rows)
+        print('Results saved into ./Testing/results/')
+
     apm.reset()
 
     return full_probs, epoch_loss, val_map
