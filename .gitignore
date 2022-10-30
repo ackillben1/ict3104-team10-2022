@@ -37,3 +37,7 @@ out/
 
 # JIRA plugin
 atlassian-ide-plugin.xml
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*/__pycache__/*
