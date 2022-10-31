@@ -1,0 +1,7 @@
+event,start_frame,end_frame
+Enter,31,37
+Walk,37,115
+Make_tea,118,509
+Make_tea.Boil_water,119,509
+Walk,514,590
+Leave,590,596
