@@ -148,7 +148,6 @@ def load_data_rgb_skeleton(train_split, val_split, root_skeleton, root_rgb):
 
 def load_data(train_split, val_split, root):
     # Load Data
-    print("jeef")
     print(train_split, val_split, root, batch_size, classes)
 
     if len(train_split) > 0:
