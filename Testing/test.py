@@ -5,7 +5,7 @@ import argparse
 import sys
 import torch
 import csv
-
+import re
 
 # python test.py -dataset TSU -mode rgb -split_setting CS -model PDAN -train True -num_channel 512 -lr 0.0002
 # -kernelsize 2 -APtype map -epoch 140 -batch_size 1 -comp_info TSU_CS_RGB_PDAN -load_model ./Testing/dataset/
@@ -88,7 +88,7 @@ batch_size = int(args.batch_size)
 if args.dataset == 'TSU':
     split_setting = str(args.split_setting)
 
-    from smarthome_i3d_per_video import TSU as Dataset
+    from Testing.smarthome_i3d_per_video import TSU as Dataset
     from smarthome_i3d_per_video import TSU_collate_fn as collate_fn
 
     classes = 51
@@ -99,9 +99,10 @@ if args.dataset == 'TSU':
     elif split_setting == 'CV':
         test_split = './Testing/data/smarthome_CV_51.json'
 
-    # rgb_root = 'C:/Users/angyi\Documents/SIT Year 3/3104/Project/TSU_RGB_i3d_feat/RGB_i3d_16frames_64000_SSD'
+    # rgb_root = 'C:/Users/angyi/Documents/SIT Year 3/3104/Project/TSU_RGB_i3d_feat/RGB_i3d_16frames_64000_SSD'
+    rgb_root = "C:/Users/angyi/Documents/SIT Year 3/3104/Project/TSU_RGB_i3d_feat/RGB_i3d_16frames_64000_SSD"
     # skeleton_root='C:/Users/angyi/Documents/SIT Year 3/3104/Project/TSU_3DPose_AGCN_feat/2sAGCN_16frames_64000'
-    rgb_root = './Testing/RGB_i3d_16frames_64000_SSD'
+    # rgb_root = './Testing/RGB_i3d_16frames_64000_SSD'
     skeleton_root = './Testing/TSU_3DPose_AGCN_feat/2sAGCN_16frames_64000'
 
 
@@ -123,10 +124,10 @@ def load_data_rgb_skeleton(val_split, root_skeleton, root_rgb):
 
 def load_data(val_split, root):
     # Load Data
-    print(val_split, root, batch_size, classes)
+    # print(val_split, root, batch_size, classes)
 
     val_dataset = Dataset(val_split, 'testing', root, batch_size, classes)
-    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=2,
+    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=True, num_workers=2,
                                                  pin_memory=True, collate_fn=collate_fn)
     val_dataloader.root = root
 
@@ -213,6 +214,7 @@ def val_step(model, gpu, dataloader, epoch):
     # Iterate over data.
     for data in dataloader:
         num_iter += 1
+
         other = data[3]
 
         outputs, loss, probs, err = run_network(model, data, gpu, epoch)
