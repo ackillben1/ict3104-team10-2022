@@ -41,6 +41,10 @@ parser.add_argument("-batch_size", type=str, default="False")
 parser.add_argument("-kernelsize", type=str, default="False")
 parser.add_argument("-feat", type=str, default="False")
 parser.add_argument("-split_setting", type=str, default="CS")
+parser.add_argument("-num_stages", type=str, default="1")
+parser.add_argument("-num_layers", type=str, default="5")
+# parser.add_argument("-dim", type=str, default="1024")
+parser.add_argument("-num_classes", type=str, default="157")
 args = parser.parse_args()
 
 import torch
@@ -398,12 +402,20 @@ if __name__ == "__main__":
             print("you are processing PDAN")
             from models import PDAN as Net
 
+            # model = Net(
+            #     num_stages=1,
+            #     num_layers=5,
+            #     num_f_maps=mid_channel,
+            #     dim=input_channnel,
+            #     num_classes=classes,
+            # )
+
             model = Net(
-                num_stages=1,
-                num_layers=5,
+                num_stages=int(args.num_stages),
+                num_layers=int(args.num_layers),
                 num_f_maps=mid_channel,
                 dim=input_channnel,
-                num_classes=classes,
+                num_classes=int(args.num_classes),
             )
 
         model = torch.nn.DataParallel(model)
