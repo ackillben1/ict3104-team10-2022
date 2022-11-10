@@ -122,6 +122,7 @@ def load_data_rgb_skeleton(val_split, root_skeleton, root_rgb):
     return dataloaders, datasets
 
 
+
 def load_data(val_split, root):
     # Load Data
     # print(val_split, root, batch_size, classes)
@@ -136,22 +137,25 @@ def load_data(val_split, root):
     return dataloaders, datasets
 
 
-# train the model
-def run(models, criterion, num_epochs=50):
+def load_labels():
+    with open("./Testing/data/all_labels.txt") as file_in:
+        lines = []
+        for line in file_in:
+            line = re.sub(r'\d+', '', line)
+            line = line.strip()
+            lines.append(line)
+        return lines
+
+
+# test the model
+def run(models, criterion, num_classes):
     since = time.time()
 
-    best_map = 0.0
-    for epoch in range(num_epochs):
-        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-        print('-' * 10)
-
-        probs = []
-        for model, gpu, dataloader, optimizer, sched, model_file in models:
-            prob_val, val_loss, val_map = val_step(model, gpu, dataloader['val'], epoch)
-            probs.append(prob_val)
-            sched.step(val_loss)
-
-
+    probs = []
+    for model, gpu, dataloader, optimizer, sched, model_file in models:
+        prob_val, val_loss, val_map = val_step(model, gpu, dataloader['val'], num_classes)
+        probs.append(prob_val)
+        sched.step(val_loss)
 
 
 def eval_model(model, dataloader, baseline=False):
@@ -201,7 +205,20 @@ def run_network(model, data, gpu, epoch=0, baseline=False):
     return outputs_final, loss, probs_f, corr / tot
 
 
-def val_step(model, gpu, dataloader, epoch):
+def save_list_to_csv(list, vid_name):
+    fields = ['captions', 'start_frame', 'end_frame']
+
+    with open('./captions/caption_' + vid_name + '.csv', 'w') as data_file:
+        data_file.truncate()
+        csv_writer = csv.writer(data_file)
+        csv_writer.writerow(fields)
+        csv_writer.writerows(list)
+
+    df = pd.read_csv('./captions/caption_' + vid_name + '.csv')
+    df.to_csv('./captions/caption_' + vid_name + '.csv', index=False)
+
+
+def val_step(model, gpu, dataloader, classes):
     model.train(False)
     apm = APMeter()
     tot_loss = 0.0
@@ -217,7 +234,28 @@ def val_step(model, gpu, dataloader, epoch):
 
         other = data[3]
 
-        outputs, loss, probs, err = run_network(model, data, gpu, epoch)
+        outputs, loss, probs, err = run_network(model, data, gpu, classes)
+
+        predicted_event = np.argmax(outputs.data.cpu().numpy()[0], axis=1)
+
+        fps = outputs.size()[1] / other[1][0]
+
+        vid_name = other[0][0]
+
+        no_frame = 1 / fps.numpy()
+
+        current = 0
+
+        events = []
+
+        for event in predicted_event:
+            start = current + 0.1
+            end = start + no_frame
+            current = end
+            current_event = event_list[event]
+            events.append([current_event, start, end])
+
+        save_list_to_csv(events, vid_name)
 
         apm.add(probs.data.cpu().numpy()[0], data[2].numpy()[0])
 
@@ -307,4 +345,4 @@ if __name__ == '__main__':
         print(lr)
         optimizer = optim.Adam(model.parameters(), lr=lr)
         lr_sched = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=8, verbose=True)
-        run([(model, 0, dataloaders, optimizer, lr_sched, args.comp_info)], criterion, num_epochs=int(args.epoch))
+        run([(model, 0, dataloaders, optimizer, lr_sched, args.comp_info)], criterion, num_classes=classes)
