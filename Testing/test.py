@@ -5,7 +5,7 @@ import argparse
 import sys
 import torch
 import csv
-
+import re
 
 # python test.py -dataset TSU -mode rgb -split_setting CS -model PDAN -train True -num_channel 512 -lr 0.0002
 # -kernelsize 2 -APtype map -epoch 140 -batch_size 1 -comp_info TSU_CS_RGB_PDAN -load_model ./Testing/dataset/
@@ -88,7 +88,7 @@ batch_size = int(args.batch_size)
 if args.dataset == 'TSU':
     split_setting = str(args.split_setting)
 
-    from smarthome_i3d_per_video import TSU as Dataset
+    from Testing.smarthome_i3d_per_video import TSU as Dataset
     from smarthome_i3d_per_video import TSU_collate_fn as collate_fn
 
     classes = 51
@@ -99,9 +99,10 @@ if args.dataset == 'TSU':
     elif split_setting == 'CV':
         test_split = './Testing/data/smarthome_CV_51.json'
 
-    # rgb_root = 'C:/Users/angyi\Documents/SIT Year 3/3104/Project/TSU_RGB_i3d_feat/RGB_i3d_16frames_64000_SSD'
+    # rgb_root = 'C:/Users/angyi/Documents/SIT Year 3/3104/Project/TSU_RGB_i3d_feat/RGB_i3d_16frames_64000_SSD'
+    rgb_root = "C:/Users/angyi/Documents/SIT Year 3/3104/Project/TSU_RGB_i3d_feat/RGB_i3d_16frames_64000_SSD"
     # skeleton_root='C:/Users/angyi/Documents/SIT Year 3/3104/Project/TSU_3DPose_AGCN_feat/2sAGCN_16frames_64000'
-    rgb_root = './Testing/RGB_i3d_16frames_64000_SSD'
+    # rgb_root = './Testing/RGB_i3d_16frames_64000_SSD'
     skeleton_root = './Testing/TSU_3DPose_AGCN_feat/2sAGCN_16frames_64000'
 
 
@@ -121,12 +122,13 @@ def load_data_rgb_skeleton(val_split, root_skeleton, root_rgb):
     return dataloaders, datasets
 
 
+
 def load_data(val_split, root):
     # Load Data
-    print(val_split, root, batch_size, classes)
+    # print(val_split, root, batch_size, classes)
 
     val_dataset = Dataset(val_split, 'testing', root, batch_size, classes)
-    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=2,
+    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=True, num_workers=2,
                                                  pin_memory=True, collate_fn=collate_fn)
     val_dataloader.root = root
 
@@ -135,22 +137,25 @@ def load_data(val_split, root):
     return dataloaders, datasets
 
 
-# train the model
-def run(models, criterion, num_epochs=50):
+def load_labels():
+    with open("./Testing/data/all_labels.txt") as file_in:
+        lines = []
+        for line in file_in:
+            line = re.sub(r'\d+', '', line)
+            line = line.strip()
+            lines.append(line)
+        return lines
+
+
+# test the model
+def run(models, criterion, num_classes):
     since = time.time()
 
-    best_map = 0.0
-    for epoch in range(num_epochs):
-        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-        print('-' * 10)
-
-        probs = []
-        for model, gpu, dataloader, optimizer, sched, model_file in models:
-            prob_val, val_loss, val_map = val_step(model, gpu, dataloader['val'], epoch)
-            probs.append(prob_val)
-            sched.step(val_loss)
-
-
+    probs = []
+    for model, gpu, dataloader, optimizer, sched, model_file in models:
+        prob_val, val_loss, val_map = val_step(model, gpu, dataloader['val'], num_classes)
+        probs.append(prob_val)
+        sched.step(val_loss)
 
 
 def eval_model(model, dataloader, baseline=False):
@@ -200,7 +205,21 @@ def run_network(model, data, gpu, epoch=0, baseline=False):
     return outputs_final, loss, probs_f, corr / tot
 
 
-def val_step(model, gpu, dataloader, epoch):
+# Save list of caption to csv
+def save_list_to_csv(list, vid_name):
+    fields = ['captions', 'start_frame', 'end_frame']
+
+    with open('./Data_Folder/Captions/caption_' + vid_name + '.csv', 'w') as data_file:
+        data_file.truncate()
+        csv_writer = csv.writer(data_file)
+        csv_writer.writerow(fields)
+        csv_writer.writerows(list)
+
+    df = pd.read_csv('./Data_Folder/Captions/caption_' + vid_name + '.csv')
+    df.to_csv('./Data_Folder/Captions/caption_' + vid_name + '.csv', index=False)
+
+
+def val_step(model, gpu, dataloader, classes):
     model.train(False)
     apm = APMeter()
     tot_loss = 0.0
@@ -213,9 +232,33 @@ def val_step(model, gpu, dataloader, epoch):
     # Iterate over data.
     for data in dataloader:
         num_iter += 1
+
         other = data[3]
 
-        outputs, loss, probs, err = run_network(model, data, gpu, epoch)
+        outputs, loss, probs, err = run_network(model, data, gpu, classes)
+
+        predicted_event = np.argmax(outputs.data.cpu().numpy()[0], axis=1)
+
+        # Get video fps
+        fps = outputs.size()[1] / other[1][0]
+
+        vid_name = other[0][0]
+
+        no_frame = 1 / fps.numpy()
+
+        current = 0
+
+        events = []
+
+        # Generate list of action from output of testing
+        for event in predicted_event:
+            start = round(current)
+            end = start + round(no_frame)
+            current = end
+            current_event = event_list[event]
+            events.append([current_event, start, end])
+
+        save_list_to_csv(events, vid_name)
 
         apm.add(probs.data.cpu().numpy()[0], data[2].numpy()[0])
 
@@ -305,4 +348,4 @@ if __name__ == '__main__':
         print(lr)
         optimizer = optim.Adam(model.parameters(), lr=lr)
         lr_sched = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=8, verbose=True)
-        run([(model, 0, dataloaders, optimizer, lr_sched, args.comp_info)], criterion, num_epochs=int(args.epoch))
+        run([(model, 0, dataloaders, optimizer, lr_sched, args.comp_info)], criterion, num_classes=classes)
