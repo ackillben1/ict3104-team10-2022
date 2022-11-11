@@ -254,7 +254,7 @@ def val_step(model, gpu, dataloader, classes):
 
 
 if __name__ == '__main__':
-    print(str(args.model))
+    # print(str(args.model))
     # print('batch_size:', batch_size)
     # print('cuda_avail', torch.cuda.is_available())
 
@@ -292,7 +292,7 @@ if __name__ == '__main__':
             model = torch.load(args.load_model)
             # weight
             # model.load_state_dict(torch.load(str(args.load_model)))
-            # print("loaded", args.load_model)
+            print("loaded", args.load_model)
 
         pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         # print('pytorch_total_params', pytorch_total_params)
