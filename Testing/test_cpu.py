@@ -92,7 +92,7 @@ if args.dataset == 'TSU':
     elif split_setting == 'CV':
         test_split = './pipline/data/smarthome_CV_51.json'
 
-    rgb_root = 'C:/Users/angyi/Documents/Year 3/Year 3 Trimester 1/3104/Project/TSU_RGB_i3d_feat/RGB_i3d_16frames_64000_SSD'
+    rgb_root = "C:/Users/angyi/Documents/Year 3/Year 3 Trimester 1/3104/Project/TSU_RGB_i3d_feat/RGB_i3d_16frames_64000_SSD"
     # rgb_root = './Training/RGB_i3d_16frames_64000_SSD'
     skeleton_root='./pipline/TSU_3DPose_AGCN_feat/2sAGCN_16frames_64000' 
 
@@ -127,27 +127,27 @@ def load_data(val_split, root):
     return dataloaders, datasets
 
 
+def load_labels():
+    with open("./Testing/data/all_labels.txt") as file_in:
+        lines = []
+        for line in file_in:
+            line = re.sub(r'\d+', '', line)
+            line = line.strip()
+            lines.append(line)
+        return lines
+
+
 # train the model
-def run(models, criterion, num_epochs=50):
+def run(models, criterion, num_classes):
     since = time.time()
 
     best_map = 0.0
-    for epoch in range(num_epochs):
-        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-        print('-' * 10)
 
-        probs = []
-        for model, gpu, dataloader, optimizer, sched, model_file in models:
-            prob_val, val_loss, val_map = val_step(model, gpu, dataloader['val'], epoch)
-            probs.append(prob_val)
-            sched.step(val_loss)
-
-            # if best_map < val_map:
-            #     best_map = val_map
-            #     torch.save(model.state_dict(),
-            #                './' + str(args.model) + '/weight_epoch_' + str(args.lr) + '_' + str(epoch))
-            #     torch.save(model, './' + str(args.model) + '/model_epoch_' + str(args.lr) + '_' + str(epoch))
-            #     print('save here:', './' + str(args.model) + '/weight_epoch_' + str(args.lr) + '_' + str(epoch))
+    probs = []
+    for model, gpu, dataloader, optimizer, sched, model_file in models:
+        prob_val, val_loss, val_map = val_step(model, gpu, dataloader['val'], num_classes)
+        probs.append(prob_val)
+        sched.step(val_loss)
 
 
 def eval_model(model, dataloader, baseline=False):
@@ -198,14 +198,27 @@ def run_network(model, data, gpu, epoch=0, baseline=False):
     return outputs_final, loss, probs_f, corr / tot
 
 
-def val_step(model, gpu, dataloader, epoch):
+def save_list_to_csv(list, vid_name):
+    fields = ['captions', 'start_frame', 'end_frame']
+
+    with open('./Data_Folder/Captions/caption_' + vid_name + '.csv', 'w') as data_file:
+        data_file.truncate()
+        csv_writer = csv.writer(data_file)
+        csv_writer.writerow(fields)
+        csv_writer.writerows(list)
+
+    df = pd.read_csv('./Data_Folder/Captions/caption_' + vid_name + '.csv')
+    df.to_csv('./Data_Folder/Captions/caption_' + vid_name + '.csv', index=False)
+
+
+def val_step(model, gpu, dataloader, classes):
     model.train(False)
     apm = APMeter()
     tot_loss = 0.0
     error = 0.0
     num_iter = 0.
     num_preds = 0
-
+    event_list = load_labels()
     full_probs = {}
 
     # Iterate over data.
@@ -213,7 +226,28 @@ def val_step(model, gpu, dataloader, epoch):
         num_iter += 1
         other = data[3]
 
-        outputs, loss, probs, err = run_network(model, data, gpu, epoch)
+        outputs, loss, probs, err = run_network(model, data, gpu, classes)
+
+        predicted_event = np.argmax(outputs.data.cpu().numpy()[0], axis=1)
+
+        fps = outputs.size()[1]/other[1][0]
+
+        vid_name = other[0][0]
+
+        no_frame = 1/fps.numpy()
+
+        current = 0
+
+        events = []
+
+        for event in predicted_event:
+            start = round(current)
+            end = start + round(no_frame)
+            current = end
+            current_event = event_list[event]
+            events.append([current_event, start, end])
+
+        save_list_to_csv(events, vid_name)
 
         apm.add(probs.data.cpu().numpy()[0], data[2].numpy()[0])
 
@@ -310,4 +344,4 @@ if __name__ == '__main__':
         print(lr)
         optimizer = optim.Adam(model.parameters(), lr=lr)
         lr_sched = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=8, verbose=True)
-        run([(model, 0, dataloaders, optimizer, lr_sched, args.comp_info)], criterion, num_epochs=int(args.epoch))
+        run([(model, 0, dataloaders, optimizer, lr_sched, args.comp_info)], criterion, num_classes=num_classes)
