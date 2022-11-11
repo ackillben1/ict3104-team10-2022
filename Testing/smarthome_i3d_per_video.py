@@ -45,6 +45,7 @@ def make_dataset(split_file, split, root, num_classes=51):
             for fr in range(0,num_feat,1):
                 # print (fr,num_feat,fps)
                 if fr/fps > ann[1] and fr/fps < ann[2]:
+                    # if is a known action return 1
                     label[fr, ann[0]] = 1 # binary classification
         dataset.append((vid, label, data[vid]['duration']))
         i += 1
@@ -106,4 +107,3 @@ def TSU_collate_fn(batch):
         new_batch.append([video_to_tensor(f), torch.from_numpy(m), torch.from_numpy(l), b[2]])
 
     return default_collate(new_batch)
-
