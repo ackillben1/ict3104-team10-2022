@@ -205,17 +205,18 @@ def run_network(model, data, gpu, epoch=0, baseline=False):
     return outputs_final, loss, probs_f, corr / tot
 
 
+# Save list of caption to csv
 def save_list_to_csv(list, vid_name):
     fields = ['captions', 'start_frame', 'end_frame']
 
-    with open('./captions/caption_' + vid_name + '.csv', 'w') as data_file:
+    with open('./Data_Folder/Captions/caption_' + vid_name + '.csv', 'w') as data_file:
         data_file.truncate()
         csv_writer = csv.writer(data_file)
         csv_writer.writerow(fields)
         csv_writer.writerows(list)
 
-    df = pd.read_csv('./captions/caption_' + vid_name + '.csv')
-    df.to_csv('./captions/caption_' + vid_name + '.csv', index=False)
+    df = pd.read_csv('./Data_Folder/Captions/caption_' + vid_name + '.csv')
+    df.to_csv('./Data_Folder/Captions/caption_' + vid_name + '.csv', index=False)
 
 
 def val_step(model, gpu, dataloader, classes):
@@ -238,6 +239,7 @@ def val_step(model, gpu, dataloader, classes):
 
         predicted_event = np.argmax(outputs.data.cpu().numpy()[0], axis=1)
 
+        # Get video fps
         fps = outputs.size()[1] / other[1][0]
 
         vid_name = other[0][0]
@@ -248,9 +250,10 @@ def val_step(model, gpu, dataloader, classes):
 
         events = []
 
+        # Generate list of action from output of testing
         for event in predicted_event:
-            start = current + 0.1
-            end = start + no_frame
+            start = round(current)
+            end = start + round(no_frame)
             current = end
             current_event = event_list[event]
             events.append([current_event, start, end])
