@@ -126,7 +126,6 @@ def load_data(val_split, root):
     datasets = {'val': val_dataset}
     return dataloaders, datasets
 
-
 def load_labels():
     with open("./Testing/data/all_labels.txt") as file_in:
         lines = []
@@ -137,7 +136,7 @@ def load_labels():
         return lines
 
 
-# train the model
+# test the model
 def run(models, criterion, num_classes):
     since = time.time()
 
@@ -148,17 +147,6 @@ def run(models, criterion, num_classes):
         prob_val, val_loss, val_map = val_step(model, gpu, dataloader['val'], num_classes)
         probs.append(prob_val)
         sched.step(val_loss)
-
-
-def eval_model(model, dataloader, baseline=False):
-    results = {}
-    for data in dataloader:
-        other = data[3]
-        outputs, loss, probs, _ = run_network(model, data, 0, baseline)
-        fps = outputs.size()[1] / other[1][0]
-
-        results[other[0][0]] = (outputs.data.cpu().numpy()[0], probs.data.cpu().numpy()[0], data[2].numpy()[0], fps)
-    return results
 
 
 def run_network(model, data, gpu, epoch=0, baseline=False):
@@ -198,19 +186,6 @@ def run_network(model, data, gpu, epoch=0, baseline=False):
     return outputs_final, loss, probs_f, corr / tot
 
 
-def save_list_to_csv(list, vid_name):
-    fields = ['captions', 'start_frame', 'end_frame']
-
-    with open('./Data_Folder/Captions/caption_' + vid_name + '.csv', 'w') as data_file:
-        data_file.truncate()
-        csv_writer = csv.writer(data_file)
-        csv_writer.writerow(fields)
-        csv_writer.writerows(list)
-
-    df = pd.read_csv('./Data_Folder/Captions/caption_' + vid_name + '.csv')
-    df.to_csv('./Data_Folder/Captions/caption_' + vid_name + '.csv', index=False)
-
-
 def val_step(model, gpu, dataloader, classes):
     model.train(False)
     apm = APMeter()
@@ -218,6 +193,7 @@ def val_step(model, gpu, dataloader, classes):
     error = 0.0
     num_iter = 0.
     num_preds = 0
+    # Save list of activity label from text file
     event_list = load_labels()
     full_probs = {}
 
@@ -227,27 +203,6 @@ def val_step(model, gpu, dataloader, classes):
         other = data[3]
 
         outputs, loss, probs, err = run_network(model, data, gpu, classes)
-
-        predicted_event = np.argmax(outputs.data.cpu().numpy()[0], axis=1)
-
-        fps = outputs.size()[1]/other[1][0]
-
-        vid_name = other[0][0]
-
-        no_frame = 1/fps.numpy()
-
-        current = 0
-
-        events = []
-
-        for event in predicted_event:
-            start = round(current)
-            end = start + round(no_frame)
-            current = end
-            current_event = event_list[event]
-            events.append([current_event, start, end])
-
-        save_list_to_csv(events, vid_name)
 
         apm.add(probs.data.cpu().numpy()[0], data[2].numpy()[0])
 
