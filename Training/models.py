@@ -9,8 +9,10 @@ class PDAN(nn.Module):
     def __init__(
         self, num_stages=1, num_layers=5, num_f_maps=512, dim=1024, num_classes=157
     ):
-        print("Stages", num_stages)
-        print("Layers", num_layers)
+        print("Stages: ", num_stages)
+        print("Layers: ", num_layers)
+        print("Classes: ", num_classes)
+
         super(PDAN, self).__init__()
         self.stage1 = SSPDAN(num_layers, num_f_maps, dim, num_classes)
         self.stages = nn.ModuleList(

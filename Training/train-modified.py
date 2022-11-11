@@ -70,7 +70,7 @@ torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-print("Random_SEED!!!:", SEED)
+# print("Random_SEED!!!:", SEED)
 
 from torch.optim import lr_scheduler
 from torch.autograd import Variable
@@ -353,6 +353,7 @@ def val_step(model, gpu, dataloader, epoch):
 
 
 if __name__ == "__main__":
+    print("=====> Parameters selected =====>")
     print("mode:", args.mode)
     print("split_setting:", args.split_setting)
     print("model", str(args.model))
@@ -365,6 +366,7 @@ if __name__ == "__main__":
     print("batch_size:", batch_size)
     print("cuda_avail", torch.cuda.is_available())
     print("cuda_device:", torch.cuda.device_count())
+    print("=====> Running =====>\n\n")
 
     if torch.cuda.is_available() == False:
         print(
@@ -395,12 +397,14 @@ if __name__ == "__main__":
         else:
             input_channnel = 1024
 
-        num_classes = classes
+        # num_classes = classes
         mid_channel = int(args.num_channel)
 
         if args.model == "PDAN":
             print("you are processing PDAN")
             from models import PDAN as Net
+
+            num_classes = args.num_classes
 
             # model = Net(
             #     num_stages=1,
@@ -417,6 +421,8 @@ if __name__ == "__main__":
                 dim=input_channnel,
                 num_classes=int(args.num_classes),
             )
+        else:
+            num_classes = classes
 
         model = torch.nn.DataParallel(model)
 
