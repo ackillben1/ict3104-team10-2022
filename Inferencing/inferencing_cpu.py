@@ -68,7 +68,7 @@ torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-print('Random_SEED!!!:', SEED)
+# print('Random_SEED!!!:', SEED)
 
 from torch.optim import lr_scheduler
 from torch.autograd import Variable
@@ -149,6 +149,7 @@ def run(models, criterion, num_classes):
     for model, gpu, dataloader, optimizer, sched, model_file in models:
         inference_step(model, gpu, dataloader['val'], num_classes)
 
+    print("Inference is concluded")
 
 
 def run_network(model, data, gpu, epoch=0, baseline=False):
@@ -203,17 +204,11 @@ def save_list_to_csv(list, vid_name):
 
 def inference_step(model, gpu, dataloader, classes):
     model.eval()
-    apm = APMeter()
-    tot_loss = 0.0
-    error = 0.0
-    num_iter = 0.
-    num_preds = 0
     event_list = load_labels()
-    full_probs = {}
+    print("Inference is running")
 
     # Iterate over data.
     for data in dataloader:
-        num_iter += 1
         other = data[3]
 
         outputs, loss, probs, err = run_network(model, data, gpu, classes)
@@ -242,19 +237,19 @@ def inference_step(model, gpu, dataloader, classes):
 
 if __name__ == '__main__':
     print(str(args.model))
-    print('batch_size:', batch_size)
-    print('cuda_avail', torch.cuda.is_available())
+    # print('batch_size:', batch_size)
+    # print('cuda_avail', torch.cuda.is_available())
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if args.mode == 'flow':
-        print('flow mode', flow_root)
+        print('flow mode')
         dataloaders, datasets = load_data(test_split, flow_root)
     elif args.mode == 'skeleton':
-        print('Pose mode', skeleton_root)
+        print('Pose mode')
         dataloaders, datasets = load_data(test_split, skeleton_root)
     elif args.mode == 'rgb':
-        print('RGB mode', rgb_root)
+        print('RGB mode')
         dataloaders, datasets = load_data(test_split, rgb_root)
 
     if args.test:
@@ -284,17 +279,17 @@ if __name__ == '__main__':
             model = torch.load(args.load_model, map_location=torch.device('cpu'))
             # weight
             # model.load_state_dict(torch.load(str(args.load_model)))
-            print("loaded", args.load_model)
+            # print("loaded", args.load_model)
 
         pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        print('pytorch_total_params', pytorch_total_params)
-        print('num_channel:', num_channel, 'input_channnel:', input_channnel, 'num_classes:', num_classes)
+        # print('pytorch_total_params', pytorch_total_params)
+        # print('num_channel:', num_channel, 'input_channnel:', input_channnel, 'num_classes:', num_classes)
         # model.cuda()
         model.cpu()
 
         criterion = nn.NLLLoss(reduce=False)
         lr = float(args.lr)
-        print(lr)
+        # print(lr)
         optimizer = optim.Adam(model.parameters(), lr=lr)
         lr_sched = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=8, verbose=True)
         run([(model, 0, dataloaders, optimizer, lr_sched, args.comp_info)], criterion, num_classes=num_classes)
