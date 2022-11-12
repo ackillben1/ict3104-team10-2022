@@ -1,8 +1,13 @@
 from __future__ import division
+
+import csv
 import time
 import os
 import argparse
 import sys
+from typing import re
+
+import pandas as pd
 import torch
 
 
@@ -125,6 +130,7 @@ def load_data(val_split, root):
     datasets = {'val': val_dataset}
     return dataloaders, datasets
 
+
 def load_labels():
     with open("./Testing/data/all_labels.txt") as file_in:
         lines = []
@@ -205,6 +211,25 @@ def val_step(model, gpu, dataloader, classes):
         other = data[3]
 
         outputs, loss, probs, err = run_network(model, data, gpu, classes)
+
+        predicted_event = np.argmax(outputs.data.cpu().numpy()[0], axis=1)
+
+        fps = outputs.size()[1] / other[1][0]
+
+        vid_name = other[0][0]
+
+        no_frame = 1 / fps.numpy()
+
+        current = 0
+
+        events = []
+
+        for event in predicted_event:
+            start = round(current)
+            end = start + round(no_frame)
+            current = end
+            current_event = event_list[event]
+            events.append([current_event, start, end, vid_name, (100 * probs.data.cpu().numpy()[0][num_iter][event])])
 
         apm.add(probs.data.cpu().numpy()[0], data[2].numpy()[0])
 

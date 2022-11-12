@@ -3,6 +3,8 @@ import time
 import os
 import argparse
 import sys
+
+import pandas as pd
 import torch
 import csv
 import re
@@ -201,7 +203,7 @@ def val_step(model, gpu, dataloader, classes):
     apm = APMeter()
     tot_loss = 0.0
     error = 0.0
-    num_iter = 0.
+    num_iter = 0
     num_preds = 0
     # Save list of activity label from text file
     event_list = load_labels()
@@ -210,13 +212,35 @@ def val_step(model, gpu, dataloader, classes):
 
     # Iterate over data.
     for data in dataloader:
-        num_iter += 1
+        num_iter = 0
 
         other = data[3]
 
         outputs, loss, probs, err = run_network(model, data, gpu, classes)
 
+        predicted_event = np.argmax(outputs.data.cpu().numpy()[0], axis=1)
+
+        fps = outputs.size()[1] / other[1][0]
+
+        vid_name = other[0][0]
+
+        no_frame = 1 / fps.numpy()
+
+        current = 0
+
+        events = []
+
         apm.add(probs.data.cpu().numpy()[0], data[2].numpy()[0])
+
+        for event in predicted_event:
+            start = round(current)
+            end = start + round(no_frame)
+            current = end
+            current_event = event_list[event]
+            events.append([current_event, start, end, vid_name, (100 * probs.data.cpu().numpy()[0][num_iter][event])])
+
+        # List of action predicted, start, end, vid name, prob
+        # save_to_your_csv(events)
 
         error += err.data
         tot_loss += loss.data
@@ -224,6 +248,8 @@ def val_step(model, gpu, dataloader, classes):
         probs = probs.squeeze()
 
         full_probs[other[0][0]] = probs.data.cpu().numpy().T
+
+        num_iter += 1
 
     epoch_loss = tot_loss / num_iter
 
