@@ -7,6 +7,8 @@ import sys
 import pandas as pd
 import torch
 import csv
+import wandb
+from colorama import Back
 import re
 
 # python test.py -dataset TSU -mode rgb -split_setting CS -model PDAN -train True -num_channel 512 -lr 0.0002
@@ -257,23 +259,60 @@ def val_step(model, gpu, dataloader, classes):
     print('val-map:', val_map)
     print(100 * apm.value())
 
-    fields = ['val-map', 'apm']
+    # Write predictions to CSV file
+    fields = ['Activity_Index', 'Average Class Prediction']
     rows = []
     init_flag = False
-    tempApm = apm.value().tolist()
+    tempApm = (100*apm.value()).tolist()
+    index = 0
     for value in tempApm:
-        if not init_flag:
-            rows.append([float(val_map), value])
-            init_flag = True
-        else:
-            rows.append(['', value])
-
-    filename = "./Testing/results/results.csv"
-    with open(filename, 'w', newline='') as csv_file:
+        rows.append([index, value])
+        index = index + 1
+            
+    with open("./Testing/results/prob_values.csv", 'w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow(fields)
         csv_writer.writerows(rows)
-        print('Results saved into ./Testing/results/')
+        
+    # Combine activity names and predictions to one CSV file    
+    activity_names = pd.read_csv(r'./Testing/data/all_labels.csv')
+    prob_values =  pd.read_csv(r'./Testing/results/prob_values.csv')
+    merge_output = pd.merge(activity_names, prob_values,on='Activity_Index',how='outer')
+    final_output = merge_output.drop(columns=['Activity_Index'])
+    final_output.to_csv('./Testing/results/results.csv', index=False)
+    
+    # Append val_map, epoch_loss, total_value and events CSV file
+    val_map_value = ['Val Map',float(val_map)]
+    epoch_loss_value = ['Epoch Loss',float(epoch_loss)]
+    total_loss_value = ['Total Loss', float(tot_loss)]
+    
+    fields2= ["Event", "Start_frame", "End_frame", "Video_name", "Prediction Accuracy"]
+    with open('./Testing/results/results.csv','a',newline='') as fd:
+        csv_writer = csv.writer(fd)
+        csv_writer.writerow("")
+        csv_writer.writerow(val_map_value)
+        csv_writer.writerow(epoch_loss_value)
+        csv_writer.writerow(total_loss_value)
+        csv_writer.writerow("")
+        csv_writer.writerow(fields2)
+        csv_writer.writerows(events)
+        
+    print('\033[92m'+"\033[1m"+ "==============================================================="+ "\033[0m"+'\033[0m')
+    print(Back.GREEN+"\033[1m"+ u'\u2713'+ " results exported to: ./Testing/results/results.csv"+ "\033[0m")
+    
+    # Generate Graphs on wandb
+    # Generate table
+    table = wandb.Table(data=final_output,columns=["Activity", "Average Class Prediction"] )
+    
+    # Plot graphs
+    wandb.log({"Average Class Prediction":wandb.plot.bar(table, "Activity", "Average Class Prediction")})
+    wandb.log({"Epoch Loss": epoch_loss,
+               "Total Loss": tot_loss,
+               "val_map": val_map,
+        })
+     
+    print('\033[92m'+"\033[1m"+ "==============================================================="+ "\033[0m"+'\033[0m')
+    print(Back.GREEN+"\033[1m"+ u'\u2713'+ " Graphs generated successfully!" + "\033[0m")
 
     apm.reset()
     return full_probs, epoch_loss, val_map

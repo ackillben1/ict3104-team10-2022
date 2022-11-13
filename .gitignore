@@ -55,3 +55,6 @@ Testing/captions/
 */Testing/captions/*
 Data_Folder/Captions/
 */Data_Folder/Captions/*
+
+# Wandb
+wandb/*
