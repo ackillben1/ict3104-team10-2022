@@ -5,11 +5,12 @@ import time
 import os
 import argparse
 import sys
-from typing import re
-
-import pandas as pd
 import torch
-
+import wandb
+import pandas as pd
+from colorama import Fore, Back
+import math
+import re
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -152,6 +153,7 @@ def run(models, criterion, num_classes):
         prob_val, val_loss, val_map = val_step(model, gpu, dataloader['val'], num_classes)
         probs.append(prob_val)
         sched.step(val_loss)
+        
 
     print("Testing has concluded")
 
@@ -198,7 +200,7 @@ def val_step(model, gpu, dataloader, classes):
     apm = APMeter()
     tot_loss = 0.0
     error = 0.0
-    num_iter = 0.
+    num_iter = 0
     num_preds = 0
     # Save list of activity label from text file
     event_list = load_labels()
@@ -207,7 +209,7 @@ def val_step(model, gpu, dataloader, classes):
 
     # Iterate over data.
     for data in dataloader:
-        num_iter += 1
+        num_iter = 0
         other = data[3]
 
         outputs, loss, probs, err = run_network(model, data, gpu, classes)
@@ -239,30 +241,68 @@ def val_step(model, gpu, dataloader, classes):
         probs = probs.squeeze()
 
         full_probs[other[0][0]] = probs.data.cpu().numpy().T
-
+    
+    num_iter += 1
     epoch_loss = tot_loss / num_iter
 
     val_map = torch.sum(100 * apm.value()) / torch.nonzero(100 * apm.value()).size()[0]
     print('val-map:', val_map)
     print(100 * apm.value())
-
-    fields = ['val-map', 'apm']
+    
+    # Write predictions to CSV file
+    fields = ['Activity_Index', 'Average Class Prediction']
     rows = []
     init_flag = False
-    tempApm = apm.value().tolist()
+    tempApm = (100*apm.value()).tolist()
+    index = 0
     for value in tempApm:
-        if not init_flag:
-            rows.append([float(val_map), value])
-            init_flag = True
-        else:
-            rows.append(['', value])
-
-    filename = "./Testing/results/results.csv"
-    with open(filename, 'w', newline='') as csv_file:
+        rows.append([index, value])
+        index = index + 1
+            
+    with open("./Testing/results/prob_values.csv", 'w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow(fields)
         csv_writer.writerows(rows)
-        print('Results saved into ./Testing/results/')
+        
+    # Combine activity names and predictions to one CSV file    
+    activity_names = pd.read_csv(r'./Testing/data/all_labels.csv')
+    prob_values =  pd.read_csv(r'./Testing/results/prob_values.csv')
+    merge_output = pd.merge(activity_names, prob_values,on='Activity_Index',how='outer')
+    final_output = merge_output.drop(columns=['Activity_Index'])
+    final_output.to_csv('./Testing/results/results.csv', index=False)
+    
+    # Append val_map, epoch_loss, total_value and events CSV file
+    val_map_value = ['Val Map',float(val_map)]
+    epoch_loss_value = ['Epoch Loss',float(epoch_loss)]
+    total_loss_value = ['Total Loss', float(tot_loss)]
+    
+    fields2= ["Event", "Start_frame", "End_frame", "Video_name", "Prediction Accuracy"]
+    with open('./Testing/results/results.csv','a',newline='') as fd:
+        csv_writer = csv.writer(fd)
+        csv_writer.writerow("")
+        csv_writer.writerow(val_map_value)
+        csv_writer.writerow(epoch_loss_value)
+        csv_writer.writerow(total_loss_value)
+        csv_writer.writerow("")
+        csv_writer.writerow(fields2)
+        csv_writer.writerows(events)
+        
+    print('\033[92m'+"\033[1m"+ "==============================================================="+ "\033[0m"+'\033[0m')
+    print(Back.GREEN+"\033[1m"+ u'\u2713'+ " results exported to: ./Testing/results/results.csv"+ "\033[0m")
+    
+    # Generate Graphs on wandb
+    # Generate table
+    table = wandb.Table(data=final_output,columns=["Activity", "Average Class Prediction"] )
+    
+    # Plot graphs
+    wandb.log({"Average Class Prediction":wandb.plot.bar(table, "Activity", "Average Class Prediction")})
+    wandb.log({"Epoch Loss": epoch_loss,
+               "Total Loss": tot_loss,
+               "val_map": val_map,
+        })
+     
+    print('\033[92m'+"\033[1m"+ "==============================================================="+ "\033[0m"+'\033[0m')
+    print(Back.GREEN+"\033[1m"+ u'\u2713'+ " Graphs generated successfully!" + "\033[0m")
 
     apm.reset()
 
