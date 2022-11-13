@@ -52,3 +52,6 @@ Data_Folder/Captions/
 
 # Wandb
 wandb/*
+
+STEP/Data_Folder/Videos/results/*
+STEP/pretrained/*
