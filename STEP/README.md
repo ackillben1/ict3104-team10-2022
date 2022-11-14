@@ -10,5 +10,5 @@
 Also note that you have to download the pretrained model from here:
 https://drive.google.com/file/d/1hIzrTzR50pYwLLzu_5GpmEGY4Q-e1-BX/view
 
- and place it in the ```/pretrained``` folder.
+and place it in the ```/pretrained``` folder.
 
