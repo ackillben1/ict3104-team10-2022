@@ -3,7 +3,7 @@
 ```bash
 1. conda create -n STEP python=3.7
 2. conda activate STEP
-3. pip install -r requirements.txt
+3. python -m pip install -r requirements.txt
 4. jupyter notebook
 ```
 

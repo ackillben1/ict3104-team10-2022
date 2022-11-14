@@ -53,6 +53,7 @@ Data_Folder/Captions/
 # Wandb
 wandb/*
 
+# STEP
 STEP/Data_Folder/Videos/results/*
 STEP/pretrained/*
 STEP/Data_Folder/Frames/*
