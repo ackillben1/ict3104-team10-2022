@@ -1,10 +1,16 @@
 from __future__ import division
+
+import csv
 import time
 import os
 import argparse
 import sys
 import torch
-
+import wandb
+import pandas as pd
+from colorama import Fore, Back
+import math
+import re
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -63,7 +69,6 @@ torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-print('Random_SEED!!!:', SEED)
 
 from torch.optim import lr_scheduler
 from torch.autograd import Variable
@@ -92,7 +97,7 @@ if args.dataset == 'TSU':
     elif split_setting == 'CV':
         test_split = './pipline/data/smarthome_CV_51.json'
 
-    rgb_root = 'C:/Users/angyi/Documents/Year 3/Year 3 Trimester 1/3104/Project/TSU_RGB_i3d_feat/RGB_i3d_16frames_64000_SSD'
+    rgb_root = "C:/Users/angyi/Documents/Year 3/Year 3 Trimester 1/3104/Project/TSU_RGB_i3d_feat/RGB_i3d_16frames_64000_SSD"
     # rgb_root = './Training/RGB_i3d_16frames_64000_SSD'
     skeleton_root='./pipline/TSU_3DPose_AGCN_feat/2sAGCN_16frames_64000' 
 
@@ -127,38 +132,30 @@ def load_data(val_split, root):
     return dataloaders, datasets
 
 
-# train the model
-def run(models, criterion, num_epochs=50):
+def load_labels():
+    with open("./Testing/data/all_labels.txt") as file_in:
+        lines = []
+        for line in file_in:
+            line = re.sub(r'\d+', '', line)
+            line = line.strip()
+            lines.append(line)
+        return lines
+
+
+# test the model
+def run(models, criterion, num_classes):
     since = time.time()
 
     best_map = 0.0
-    for epoch in range(num_epochs):
-        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-        print('-' * 10)
 
-        probs = []
-        for model, gpu, dataloader, optimizer, sched, model_file in models:
-            prob_val, val_loss, val_map = val_step(model, gpu, dataloader['val'], epoch)
-            probs.append(prob_val)
-            sched.step(val_loss)
+    probs = []
+    for model, gpu, dataloader, optimizer, sched, model_file in models:
+        prob_val, val_loss, val_map = val_step(model, gpu, dataloader['val'], num_classes)
+        probs.append(prob_val)
+        sched.step(val_loss)
+        
 
-            # if best_map < val_map:
-            #     best_map = val_map
-            #     torch.save(model.state_dict(),
-            #                './' + str(args.model) + '/weight_epoch_' + str(args.lr) + '_' + str(epoch))
-            #     torch.save(model, './' + str(args.model) + '/model_epoch_' + str(args.lr) + '_' + str(epoch))
-            #     print('save here:', './' + str(args.model) + '/weight_epoch_' + str(args.lr) + '_' + str(epoch))
-
-
-def eval_model(model, dataloader, baseline=False):
-    results = {}
-    for data in dataloader:
-        other = data[3]
-        outputs, loss, probs, _ = run_network(model, data, 0, baseline)
-        fps = outputs.size()[1] / other[1][0]
-
-        results[other[0][0]] = (outputs.data.cpu().numpy()[0], probs.data.cpu().numpy()[0], data[2].numpy()[0], fps)
-    return results
+    print("Testing has concluded")
 
 
 def run_network(model, data, gpu, epoch=0, baseline=False):
@@ -198,22 +195,43 @@ def run_network(model, data, gpu, epoch=0, baseline=False):
     return outputs_final, loss, probs_f, corr / tot
 
 
-def val_step(model, gpu, dataloader, epoch):
+def val_step(model, gpu, dataloader, classes):
     model.train(False)
     apm = APMeter()
     tot_loss = 0.0
     error = 0.0
-    num_iter = 0.
+    num_iter = 0
     num_preds = 0
-
+    # Save list of activity label from text file
+    event_list = load_labels()
     full_probs = {}
+    print("Testing in progress")
 
     # Iterate over data.
     for data in dataloader:
-        num_iter += 1
+        num_iter = 0
         other = data[3]
 
-        outputs, loss, probs, err = run_network(model, data, gpu, epoch)
+        outputs, loss, probs, err = run_network(model, data, gpu, classes)
+
+        predicted_event = np.argmax(outputs.data.cpu().numpy()[0], axis=1)
+
+        fps = outputs.size()[1] / other[1][0]
+
+        vid_name = other[0][0]
+
+        no_frame = 1 / fps.numpy()
+
+        current = 0
+
+        events = []
+
+        for event in predicted_event:
+            start = round(current)
+            end = start + round(no_frame)
+            current = end
+            current_event = event_list[event]
+            events.append([current_event, start, end, vid_name, (100 * probs.data.cpu().numpy()[0][num_iter][event])])
 
         apm.add(probs.data.cpu().numpy()[0], data[2].numpy()[0])
 
@@ -223,30 +241,68 @@ def val_step(model, gpu, dataloader, epoch):
         probs = probs.squeeze()
 
         full_probs[other[0][0]] = probs.data.cpu().numpy().T
-
+    
+    num_iter += 1
     epoch_loss = tot_loss / num_iter
 
     val_map = torch.sum(100 * apm.value()) / torch.nonzero(100 * apm.value()).size()[0]
     print('val-map:', val_map)
     print(100 * apm.value())
-
-    fields = ['val-map', 'apm']
+    
+    # Write predictions to CSV file
+    fields = ['Activity_Index', 'Average Class Prediction']
     rows = []
     init_flag = False
-    tempApm = apm.value().tolist()
+    tempApm = (100*apm.value()).tolist()
+    index = 0
     for value in tempApm:
-        if not init_flag:
-            rows.append([float(val_map), value])
-            init_flag = True
-        else:
-            rows.append(['', value])
-
-    filename = "./Testing/results/results.csv"
-    with open(filename, 'w', newline='') as csv_file:
+        rows.append([index, value])
+        index = index + 1
+            
+    with open("./Testing/results/prob_values.csv", 'w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow(fields)
         csv_writer.writerows(rows)
-        print('Results saved into ./Testing/results/')
+        
+    # Combine activity names and predictions to one CSV file    
+    activity_names = pd.read_csv(r'./Testing/data/all_labels.csv')
+    prob_values =  pd.read_csv(r'./Testing/results/prob_values.csv')
+    merge_output = pd.merge(activity_names, prob_values,on='Activity_Index',how='outer')
+    final_output = merge_output.drop(columns=['Activity_Index'])
+    final_output.to_csv('./Testing/results/results.csv', index=False)
+    
+    # Append val_map, epoch_loss, total_value and events CSV file
+    val_map_value = ['Val Map',float(val_map)]
+    epoch_loss_value = ['Epoch Loss',float(epoch_loss)]
+    total_loss_value = ['Total Loss', float(tot_loss)]
+    
+    fields2= ["Event", "Start_frame", "End_frame", "Video_name", "Prediction Accuracy"]
+    with open('./Testing/results/results.csv','a',newline='') as fd:
+        csv_writer = csv.writer(fd)
+        csv_writer.writerow("")
+        csv_writer.writerow(val_map_value)
+        csv_writer.writerow(epoch_loss_value)
+        csv_writer.writerow(total_loss_value)
+        csv_writer.writerow("")
+        csv_writer.writerow(fields2)
+        csv_writer.writerows(events)
+        
+    print('\033[92m'+"\033[1m"+ "==============================================================="+ "\033[0m"+'\033[0m')
+    print(Back.GREEN+"\033[1m"+ u'\u2713'+ " results exported to: ./Testing/results/results.csv"+ "\033[0m")
+    
+    # Generate Graphs on wandb
+    # Generate table
+    table = wandb.Table(data=final_output,columns=["Activity", "Average Class Prediction"] )
+    
+    # Plot graphs
+    wandb.log({"Average Class Prediction":wandb.plot.bar(table, "Activity", "Average Class Prediction")})
+    wandb.log({"Epoch Loss": epoch_loss,
+               "Total Loss": tot_loss,
+               "val_map": val_map,
+        })
+     
+    print('\033[92m'+"\033[1m"+ "==============================================================="+ "\033[0m"+'\033[0m')
+    print(Back.GREEN+"\033[1m"+ u'\u2713'+ " Graphs generated successfully!" + "\033[0m")
 
     apm.reset()
 
@@ -254,20 +310,18 @@ def val_step(model, gpu, dataloader, epoch):
 
 
 if __name__ == '__main__':
-    print(str(args.model))
-    print('batch_size:', batch_size)
-    print('cuda_avail', torch.cuda.is_available())
+    # print(str(args.model))
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if args.mode == 'flow':
-        print('flow mode', flow_root)
+        print('flow mode')
         dataloaders, datasets = load_data(test_split, flow_root)
     elif args.mode == 'skeleton':
-        print('Pose mode', skeleton_root)
+        print('Pose mode')
         dataloaders, datasets = load_data(test_split, skeleton_root)
     elif args.mode == 'rgb':
-        print('RGB mode', rgb_root)
+        print('RGB mode')
         dataloaders, datasets = load_data(test_split, rgb_root)
 
     if args.test:
@@ -300,14 +354,14 @@ if __name__ == '__main__':
             print("loaded", args.load_model)
 
         pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        print('pytorch_total_params', pytorch_total_params)
-        print('num_channel:', num_channel, 'input_channnel:', input_channnel, 'num_classes:', num_classes)
+        # print('pytorch_total_params', pytorch_total_params)
+        # print('num_channel:', num_channel, 'input_channnel:', input_channnel, 'num_classes:', num_classes)
         # model.cuda()
         model.cpu()
 
         criterion = nn.NLLLoss(reduce=False)
         lr = float(args.lr)
-        print(lr)
+        # print(lr)
         optimizer = optim.Adam(model.parameters(), lr=lr)
         lr_sched = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=8, verbose=True)
-        run([(model, 0, dataloaders, optimizer, lr_sched, args.comp_info)], criterion, num_epochs=int(args.epoch))
+        run([(model, 0, dataloaders, optimizer, lr_sched, args.comp_info)], criterion, num_classes=num_classes)

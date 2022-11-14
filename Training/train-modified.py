@@ -41,6 +41,10 @@ parser.add_argument("-batch_size", type=str, default="False")
 parser.add_argument("-kernelsize", type=str, default="False")
 parser.add_argument("-feat", type=str, default="False")
 parser.add_argument("-split_setting", type=str, default="CS")
+parser.add_argument("-num_stages", type=str, default="1")
+parser.add_argument("-num_layers", type=str, default="5")
+# parser.add_argument("-dim", type=str, default="1024")
+parser.add_argument("-num_classes", type=str, default="157")
 args = parser.parse_args()
 
 import torch
@@ -66,7 +70,7 @@ torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-print("Random_SEED!!!:", SEED)
+# print("Random_SEED!!!:", SEED)
 
 from torch.optim import lr_scheduler
 from torch.autograd import Variable
@@ -349,6 +353,7 @@ def val_step(model, gpu, dataloader, epoch):
 
 
 if __name__ == "__main__":
+    print("=====> Parameters selected =====>")
     print("mode:", args.mode)
     print("split_setting:", args.split_setting)
     print("model", str(args.model))
@@ -361,6 +366,7 @@ if __name__ == "__main__":
     print("batch_size:", batch_size)
     print("cuda_avail", torch.cuda.is_available())
     print("cuda_device:", torch.cuda.device_count())
+    print("=====> Running =====>\n\n")
 
     if torch.cuda.is_available() == False:
         print(
@@ -391,20 +397,32 @@ if __name__ == "__main__":
         else:
             input_channnel = 1024
 
-        num_classes = classes
+        # num_classes = classes
         mid_channel = int(args.num_channel)
 
         if args.model == "PDAN":
             print("you are processing PDAN")
             from models import PDAN as Net
 
+            num_classes = args.num_classes
+
+            # model = Net(
+            #     num_stages=1,
+            #     num_layers=5,
+            #     num_f_maps=mid_channel,
+            #     dim=input_channnel,
+            #     num_classes=classes,
+            # )
+
             model = Net(
-                num_stages=1,
-                num_layers=5,
+                num_stages=int(args.num_stages),
+                num_layers=int(args.num_layers),
                 num_f_maps=mid_channel,
                 dim=input_channnel,
-                num_classes=classes,
+                num_classes=int(args.num_classes),
             )
+        else:
+            num_classes = classes
 
         model = torch.nn.DataParallel(model)
 

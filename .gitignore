@@ -26,6 +26,12 @@ Training/RGB_i3d_16frames_64000_SSD/
 .idea/modules.xml
 .idea/vcs.xml
 
+# Environments
+.env
+.venv
+env/
+venv/
+
 # Generated files
 .idea/**/contentModel.xml
 
