@@ -55,3 +55,5 @@ wandb/*
 
 STEP/Data_Folder/Videos/results/*
 STEP/pretrained/*
+STEP/Data_Folder/Frames/*
+STEP/Data_Folder/Results/*
