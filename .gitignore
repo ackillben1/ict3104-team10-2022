@@ -58,3 +58,10 @@ Data_Folder/Captions/
 
 # Wandb
 wandb/*
+
+# STEP
+STEP/pretrained/*
+STEP/Data_Folder/Frames/*
+STEP/Data_Folder/Results/*
+STEP/STEP.egg-info/*
+STEP/build/*
