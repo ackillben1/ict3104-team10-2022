@@ -200,6 +200,19 @@ def run_network(model, data, gpu, epoch=0, baseline=False):
     return outputs_final, loss, probs_f, corr / tot
 
 
+def save_list_to_csv(list, vid_name):
+    fields = ['captions', 'start_frame', 'end_frame']
+
+    with open('./Data_Folder/Captions/caption_' + vid_name + '.csv', 'w') as data_file:
+        data_file.truncate()
+        csv_writer = csv.writer(data_file)
+        csv_writer.writerow(fields)
+        csv_writer.writerows(list)
+
+    df = pd.read_csv('./Data_Folder/Captions/caption_' + vid_name + '.csv')
+    df.to_csv('./Data_Folder/Captions/caption_' + vid_name + '.csv', index=False)
+
+
 def val_step(model, gpu, dataloader, classes):
     model.train(False)
     apm = APMeter()
@@ -242,7 +255,7 @@ def val_step(model, gpu, dataloader, classes):
             events.append([current_event, start, end, vid_name, (100 * probs.data.cpu().numpy()[0][num_iter][event])])
 
         # List of action predicted, start, end, vid name, prob
-        # save_to_your_csv(events)
+        save_list_to_csv(events)
 
         error += err.data
         tot_loss += loss.data
