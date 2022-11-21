@@ -49,12 +49,12 @@ __pycache__/
 */__pycache__/*
 
 # Ignore captions and annotations generated during dev
-Data_Folder/Annotations/
-*/Data_Folder/Annotations/*
-Testing/captions/
-*/Testing/captions/*
-Data_Folder/Captions/
-*/Data_Folder/Captions/*
+# Data_Folder/Annotations/
+# */Data_Folder/Annotations/*
+# Testing/captions/
+# */Testing/captions/*
+# Data_Folder/Captions/
+# */Data_Folder/Captions/*
 
 # Wandb
 wandb/*
